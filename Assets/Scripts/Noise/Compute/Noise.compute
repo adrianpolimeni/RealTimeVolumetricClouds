@@ -1,0 +1,167 @@
+﻿#pragma kernel CSNoise
+#pragma kernel CSNormalize
+
+static const int numThreads = 8;
+
+uint resolution;
+RWTexture3D<float4> result;
+RWStructuredBuffer<int> limits;
+StructuredBuffer<float3> pointsA;
+StructuredBuffer<float3> pointsB;
+StructuredBuffer<float3> pointsC;
+
+int frequencyA;
+int frequencyB;
+int frequencyC;
+
+float4 channelMask;
+float layerMix;
+
+int3 indexToVector(uint index) {
+	uint x = (index % 3) - 1;
+	uint y = ((index % 9) / 3) - 1;
+	uint z = (index / 9) - 1;
+	return int3(x, y, z);
+}
+
+bool isWrapping(int3 cell, int numCells) {
+	for (int i = 0; i < 3; i++) {
+		if (cell[i] < 0 || cell[i] >= numCells) {
+			return true;
+		}
+	}
+	return false;
+}
+
+float lerp(float a, float b, float t) {
+	return a * (1 - t) + b * t;
+}
+
+float mix(float a, float b, float c, float t) {
+	float ab = lerp(a, b, 0.5);
+	if (t < 0.5) {
+		return lerp(a, b, t);
+	}
+	
+	return lerp(ab, c, t - 0.5);
+}
+
+float clamp(float minV, float maxV, float v) {
+	return min(max(v, minV), maxV);
+}
+
+float smooth(float w) {
+	return w * w* w* (w * (w * 6 - 15) + 10);
+}
+
+float smoothStep(float a, float b, float w) {
+	return  a + smooth(w) * (b - a);
+}
+
+float4 map01(float4 value, float low, float high) {
+	return (value - low) / (high - low);
+}
+
+
+float perlin(float3 samplePos, int numCells, StructuredBuffer<float3> points) {
+	int3 sampleCell = floor(samplePos * numCells);
+	float3 sampleCellPos = ((float3)samplePos - ((float3)sampleCell / (float3)numCells)) * (float3)numCells;
+	int3 offsets[8] = {
+		int3(0,0,0),
+		int3(0,0,1),
+		int3(0,1,0),
+		int3(0,1,1),
+		int3(1,0,0),
+		int3(1,0,1),
+		int3(1,1,0),
+		int3(1,1,1)
+	};
+	float perlinResult[8];
+
+	for (int i = 0; i < 8; i++) {
+		int3 corner = sampleCell + offsets[i];
+		corner = corner % (uint3)numCells;
+		int index = corner.x + numCells * (corner.y + corner.z * numCells);
+		// Convert random point to gradient value
+		float3 gradient = (points[index] - ((float3)corner / (float3)numCells)) * (float3)numCells;
+		gradient -= float3(0.5, 0.5, 0.5);
+		float3 distance =  sampleCellPos - (float3)offsets[i];
+		perlinResult[i] = dot(gradient, distance);
+		perlinResult[i] = clamp(0, 1, (perlinResult[i] + 3.0) / 6.0);
+		perlinResult[i] = smooth(perlinResult[i]);
+	}
+
+	float z1 = smoothStep(perlinResult[0], perlinResult[1], sampleCellPos.z);
+	float z2 = smoothStep(perlinResult[2], perlinResult[3], sampleCellPos.z);
+	float z3 = smoothStep(perlinResult[4], perlinResult[5], sampleCellPos.z);
+	float z4 = smoothStep(perlinResult[6], perlinResult[7], sampleCellPos.z);
+
+	float y1 = smoothStep(z1, z2, sampleCellPos.y);
+	float y2 = smoothStep(z3, z4, sampleCellPos.y);
+	float f = smoothStep(y1, y2, sampleCellPos.x);
+	return f;
+}
+
+
+
+
+float worley(float3 samplePos, int numCells, StructuredBuffer<float3> points) {
+	int3 sampleCell = floor(samplePos * numCells);
+	float minDistance = 1;
+
+	for (int i = 0; i < 27; i++) {
+		int3 nextCell = sampleCell + indexToVector(i);
+
+		if (!isWrapping(nextCell, numCells)) {
+			int adjCellIndex = nextCell.x + numCells * (nextCell.y + nextCell.z * numCells);
+			float3 pointOffset = samplePos - points[adjCellIndex];
+			minDistance = min(minDistance, dot(pointOffset, pointOffset));
+		} 
+		else 
+		{
+			nextCell = (nextCell + numCells) % (uint3)numCells;
+			int adjCellIndex = nextCell.x + numCells * (nextCell.y + nextCell.z * numCells);
+			for (int j = 0; j < 27; j++) {
+				float3 pointOffset = samplePos - points[adjCellIndex] + indexToVector(j);
+				minDistance = min(minDistance, dot(pointOffset, pointOffset));
+			}
+		}
+	}
+	return sqrt(minDistance);
+}
+
+[numthreads(numThreads, numThreads, numThreads)]
+void CSNoise(uint3 id : SV_DispatchThreadID)
+{
+	float3 pos = id / (float)resolution; 
+	float layerA = worley(pos, frequencyA, pointsA);
+	float layerB;
+	float layerC;
+	
+	if (resolution == 128 && channelMask.x == 1) {
+	
+		layerB = perlin(pos, frequencyB, pointsB);
+		layerC = perlin(pos, frequencyC, pointsC);
+	}
+	else
+	{
+		layerB = worley(pos, frequencyB, pointsB);
+		layerC = worley(pos, frequencyC, pointsC);
+	}
+	
+	// Average Layers and invert
+	float noiseAvg = 1 - mix(layerA, layerB, layerC, layerMix);
+	int val = (uint)(noiseAvg * 10000000);
+	InterlockedMin(limits[0], val);
+	InterlockedMax(limits[1], val);
+	result[id] = result[id] * (1 - channelMask) + noiseAvg * channelMask;
+
+}
+
+[numthreads(numThreads, numThreads, numThreads)]
+void CSNormalize(uint3 id : SV_DispatchThreadID)
+{
+	float low = (float)limits[0] / 10000000;
+	float high = (float)limits[1] / 10000000;
+	result[id] = result[id] * (1 - channelMask) + map01(result[id], low, high) * channelMask;
+}

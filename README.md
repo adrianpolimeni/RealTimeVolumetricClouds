@@ -34,7 +34,7 @@ There were visible artifacts along the sides of the cloud-box after sampling the
 
 **Figure 2**: Cloud-box without gradient edges (left), and with gradient edges (right).
 
-At this point of the implementation the shape of the clouds were looking fairly realistic. The one issue I had was that the clouds were evenly distributed throughout the height of the cloud-box. Häggström and many others use something known as a weather-map to control the parameters that affect the overall look of the clouds, this includes cloud distribution. However, I decided not to implement a full weather-map system as I was only concerned about the vertical distribution of the clouds. I was able to find an alternative method in a paper by Rikard Olajos where a height distribution function is used instead (Olajos, 2016). 
+At this point of the implementation the shape of the clouds were looking fairly realistic. The one issue I had was that the clouds were evenly distributed throughout the height of the cloud-box. Häggström and many others use something known as a weather-map to control the parameters that affect the overall look of the clouds, this includes cloud distribution. However, I decided not to implement a full weather-map system as I was only concerned about the vertical distribution of the clouds. I was able to find an alternative method in a paper by Rikard Olajos where a height distribution (HD) function is used instead (Olajos, 2016). 
 
 As a result of this function, cloud density is greater at the bottom of the cloud-box than at the top. This greatly improves the shape of the clouds, as they exhibit flatter bottoms and occasional towering peaks. 
 

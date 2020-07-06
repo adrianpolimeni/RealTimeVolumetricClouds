@@ -64,14 +64,11 @@ My goal at the start of the project was very lenient. I would consider the imple
 
 ### Works Cited
 
-Häggström, F. (2018). Real-time rendering of volumetric clouds. 
-https://umu.diva-portal.org/smash/get/diva2:1223894/FULLTEXT01.pdf
+[Häggström, F. (2018). Real-time rendering of volumetric clouds.](https://umu.diva-portal.org/smash/get/diva2:1223894/FULLTEXT01.pdf)
 
-Majercik, A., Crassin, C., Shirley, P., & McGuire, M. (2018). A ray-box intersection algorithm and efficient dynamic voxel rendering. Journal of Computer Graphics Techniques Vol, 7(3). Olajos, R. (2016). Real-Time Rendering of Volumetric Clouds. LU-CS-EX 2016-42, 20. 
-http://lup.lub.lu.se/luur/download?func=downloadFile&recordOId=8893256&fileOId=8893258
+[Majercik, A., Crassin, C., Shirley, P., & McGuire, M. (2018). A ray-box intersection algorithm and efficient dynamic voxel rendering. Journal of Computer Graphics Techniques Vol, 7(3). Olajos, R. (2016). Real-Time Rendering of Volumetric Clouds. LU-CS-EX 2016-42, 20.](http://lup.lub.lu.se/luur/download?func=downloadFile&recordOId=8893256&fileOId=8893258)
 
-Vivo, P.G.  and  Lowe J. (2015). The Book of Shaders. 
-https://thebookofshaders.com/
+[Vivo, P.G.  and  Lowe J. (2015). The Book of Shaders.](https://thebookofshaders.com/)
 
  
 
